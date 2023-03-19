@@ -97,8 +97,6 @@ def load_data():
     # Get NFT sold data from Allium
     nfts_sold_df = allium_api("wCl0X5q3YsaHTd0btmGs")    
 
-    btc_price_24h = allium_api("aGLdPtQuQETbZkq8rV0v")['usd_price'].iloc[0]
-
     # Get historical Lightning & BTC data from BitcoinVisuals.com
     #btc_lt_df = pd.read_csv(btc_lt_url, storage_options={'User-Agent': 'Mozilla/5.0'}, usecols=["day","nodes_total","capacity_total","price_btc","tx_count_total_sum","marketcap_btc"]).rename(columns={'day':'Date'}).query('Date != "2022-04-25"')
     btc_lt_df = pd.read_csv(btc_lt_file, usecols=["day","nodes_total","capacity_total","price_btc","tx_count_total_sum","marketcap_btc"]).rename(columns={'day':'Date'}).query('Date != "2022-04-25"')
@@ -116,6 +114,7 @@ def load_data():
 nfts_new_df, nfts_sold_df, btc_lt_df, addr_df, btc_price_24h = load_data()
 
 # Get summary BTC data from Blockchain.com
+btc_price_24h = allium_api("aGLdPtQuQETbZkq8rV0v")['usd_price'].iloc[0]
 bc_data = requests.get(bc_url).json()
 
 # Extract the data we need from the JSON response
