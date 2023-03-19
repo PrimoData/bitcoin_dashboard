@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import requests
 import pandas as pd
 from datetime import datetime, timedelta
@@ -6,10 +7,12 @@ import plotly.express as px
 import os
 
 allium_key = os.environ.get('ALLIUM_KEY')
+
 page_icon = "https://assets.coingecko.com/coins/images/1/thumb/bitcoin.png"
 st.set_page_config(page_title="Bitcoin Dashboard", page_icon=page_icon, layout="wide")
 
-# Custom CSS
+st.title('Bitcoin Dashboard')
+
 st.markdown('''
 <style>
 /*center metric label*/
@@ -37,8 +40,35 @@ st.markdown('''
     padding-top: 36px;
 }
 </style>
+
+<strong>Data Powered by: </strong>[Allium](https://www.allium.so/), [Bitcoin Visuals](https://bitcoinvisuals.com/resources), [Blockchain.com](https://www.blockchain.com/explorer/api).<br />
+<strong>Created by: </strong>[Primo Data](https://primodata.org/).
+  
 ''', unsafe_allow_html=True)
 
+# Define date range dropdown options
+date_ranges = {
+    "All": 365*20,
+    "Last 7 Days": 7,
+    "Last 30 Days": 30,
+    "Last 90 Days": 90,
+    "Last Year": 365,
+    "Last 5 Years": 365*5
+}
+
+# Create a sidebar panel for date filters
+with st.sidebar:
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.image('https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/1200px-Bitcoin.svg.png', width=70)
+    with col2:
+        st.image('https://upload.wikimedia.org/wikipedia/commons/5/5a/Lightning_Network.svg', width=70)
+    with col3:
+        st.image('assets/img/ordinals_logo.png', width=70)
+    st.header("Filters")
+    date_range = st.sidebar.selectbox("Date Range", options=list(date_ranges.keys()))
+    end_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    start_date = end_date - timedelta(days=date_ranges[date_range])   
 
 # Define the URLs for the data sources
 bc_url = 'https://api.blockchain.info/stats'
@@ -46,30 +76,28 @@ addr_url = 'https://api.blockchain.info/charts/n-unique-addresses?timespan=all&f
 btc_lt_url = 'https://bitcoinvisuals.com/static/data/data_daily.csv'
 btc_lt_file = 'assets/data/data_daily.csv'
 
+# Fetch data from Allium API
+def allium_api(query_id):
+    response = requests.post(
+        f"https://api.allium.so/api/v1/explorer/queries/{query_id}/run",
+        json={},
+        headers={"X-API-Key": allium_key},
+    )
+    data = response.json()
+    df = pd.DataFrame(data['data']).rename(columns={"dt":"Date"})
+    df['Date'] = pd.to_datetime(df['Date'])
+    df = df.sort_values(by="Date", ascending=False)
+    return df
+
 @st.cache_data
 def load_data():
-
     # Get NFT created data from Allium
-    nfts_new_response = requests.post(
-        "https://api.allium.so/api/v1/explorer/queries/7qtKVMAIEO8izZAdF4MS/run",
-        json={},
-        headers={"X-API-Key": allium_key},
-    )
-    nfts_new_data = nfts_new_response.json()
-    nfts_new_df = pd.DataFrame(nfts_new_data['data']).rename(columns={"dt":"Date"})
-    nfts_new_df['Date'] = pd.to_datetime(nfts_new_df['Date'])
-    nfts_new_df = nfts_new_df.sort_values(by="Date", ascending=False)
+    nfts_new_df = allium_api("7qtKVMAIEO8izZAdF4MS")
 
     # Get NFT sold data from Allium
-    nfts_sold_response = requests.post(
-        "https://api.allium.so/api/v1/explorer/queries/wCl0X5q3YsaHTd0btmGs/run",
-        json={},
-        headers={"X-API-Key": allium_key},
-    )
-    nfts_sold_data = nfts_sold_response.json()
-    nfts_sold_df = pd.DataFrame(nfts_sold_data['data']).rename(columns={"dt":"Date"})
-    nfts_sold_df['Date'] = pd.to_datetime(nfts_sold_df['Date'])
-    nfts_sold_df = nfts_sold_df.sort_values(by="Date", ascending=False)
+    nfts_sold_df = allium_api("wCl0X5q3YsaHTd0btmGs")    
+
+    btc_price_24h = allium_api("aGLdPtQuQETbZkq8rV0v")['usd_price'].iloc[0]
 
     # Get historical Lightning & BTC data from BitcoinVisuals.com
     #btc_lt_df = pd.read_csv(btc_lt_url, storage_options={'User-Agent': 'Mozilla/5.0'}, usecols=["day","nodes_total","capacity_total","price_btc","tx_count_total_sum","marketcap_btc"]).rename(columns={'day':'Date'}).query('Date != "2022-04-25"')
@@ -83,16 +111,16 @@ def load_data():
     addr_df['Date'] = pd.to_datetime(addr_df['Date'], unit='s')
     addr_df = addr_df.sort_values(by="Date", ascending=False)
 
-    return nfts_new_df, nfts_sold_df, btc_lt_df, addr_df
+    return nfts_new_df, nfts_sold_df, btc_lt_df, addr_df, btc_price_24h
 
-nfts_new_df, nfts_sold_df, btc_lt_df, addr_df = load_data()
+nfts_new_df, nfts_sold_df, btc_lt_df, addr_df, btc_price_24h = load_data()
 
 # Get summary BTC data from Blockchain.com
 bc_data = requests.get(bc_url).json()
 
 # Extract the data we need from the JSON response
 btc_price = bc_data['market_price_usd']
-btc_price_chg = ((btc_price - btc_lt_df.iloc[2,:]['price_btc']) / btc_lt_df.iloc[2,:]['price_btc'] ) * 100
+btc_price_chg = ((btc_price - btc_price_24h) / btc_price_24h ) * 100
 
 btc_total = bc_data['totalbc']/100000000
 btc_total_chg = ((btc_total - ( btc_total - (144*6.25))) / ( btc_total - (144*6.25)) ) * 100
@@ -115,33 +143,7 @@ nfts_new_chg = ((nfts_new_today - nfts_new_summed_df.iloc[2,:]['nft_count']) / n
 
 nfts_sold_summed_df = nfts_sold_df.groupby("Date")['total_sales_usd'].sum().to_frame().sort_index(ascending=False)
 nfts_sold_today = nfts_sold_summed_df.iloc[1,:]['total_sales_usd']
-nfts_sold_chg = ((nfts_sold_today - nfts_sold_summed_df.iloc[2,:]['total_sales_usd']) / nfts_sold_summed_df.iloc[2,:]['total_sales_usd'] ) * 100
-
-# Define date range dropdown options
-date_ranges = {
-    "All": 365*20,
-    "Last 7 Days": 7,
-    "Last 30 Days": 30,
-    "Last 90 Days": 90,
-    "Last Year": 365,
-    "Last 5 Years": 365*5
-}
-
-# Create a sidebar panel for date filters
-with st.sidebar:
-    st.title('Bitcoin Overview')
-
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.image('https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/1200px-Bitcoin.svg.png', width=70)
-    with col2:
-        st.image('https://upload.wikimedia.org/wikipedia/commons/5/5a/Lightning_Network.svg', width=70)
-    with col3:
-        st.image('assets/img/ordinals_logo.png', width=70)
-    st.header("Filters")
-    date_range = st.sidebar.selectbox("Date Range", options=list(date_ranges.keys()))
-    end_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    start_date = end_date - timedelta(days=date_ranges[date_range])    
+nfts_sold_chg = ((nfts_sold_today - nfts_sold_summed_df.iloc[2,:]['total_sales_usd']) / nfts_sold_summed_df.iloc[2,:]['total_sales_usd'] ) * 100 
 
 # Filter the data based on the user's input
 addr_df = addr_df.loc[(addr_df['Date'] >= pd.Timestamp(start_date)) & (addr_df['Date'] <= pd.Timestamp(end_date))]
@@ -261,9 +263,41 @@ with col2:
     )
     st.plotly_chart(chart_nfts_sold, use_container_width=True)
 
-# create a footer for the citation sources
-st.markdown('<hr />', unsafe_allow_html=True)
-st.caption('<strong>Data Sources:</strong><ul>'
-           '<li>[Allium](https://www.allium.so/)</li>'
-           '<li>[Bitcoin Visuals](https://bitcoinvisuals.com/resources)</li>'
-           '<li>[Blockchain.com](https://www.blockchain.com/explorer/api)</li></ul>', unsafe_allow_html=True)
+components.html('''
+<style>
+mash-donate-button::part(button-solid){
+    margin-left: 260px;
+    margin-top: 260px;
+}
+</style>
+  <script>
+    window.MashSettings = {
+      id: "dd9f18f3-6539-4967-97bc-de1b6bac7b7c"
+    };
+    var loader = function () {
+      window.Mash.init();
+    };
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.defer = true;
+    script.onload = loader;
+    script.src = "https://app.mash.com/sdk/sdk.js";
+    var head = document.getElementsByTagName("head")[0];
+    head.appendChild(script);
+  </script>
+  <mash-donate-button handle="my-handle" mode="all" button-size="md" button-variant="solid">
+  </mash-donate-button>
+''', height=400, width=400)
+
+st.markdown(
+    """
+    <style>
+        iframe[width="400"] {
+            position: fixed;
+            bottom: 0px;
+            right: 20px;
+        } 
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
