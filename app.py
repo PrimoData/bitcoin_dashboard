@@ -109,9 +109,9 @@ def load_data():
     addr_df['Date'] = pd.to_datetime(addr_df['Date'], unit='s')
     addr_df = addr_df.sort_values(by="Date", ascending=False)
 
-    return nfts_new_df, nfts_sold_df, btc_lt_df, addr_df, btc_price_24h
+    return nfts_new_df, nfts_sold_df, btc_lt_df, addr_df
 
-nfts_new_df, nfts_sold_df, btc_lt_df, addr_df, btc_price_24h = load_data()
+nfts_new_df, nfts_sold_df, btc_lt_df, addr_df = load_data()
 
 # Get summary BTC data from Blockchain.com
 btc_price_24h = allium_api("aGLdPtQuQETbZkq8rV0v")['usd_price'].iloc[0]
