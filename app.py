@@ -232,7 +232,6 @@ with col2:
     )
     st.plotly_chart(chart_lightning_nodes, use_container_width=True)
 
-
 st.markdown('<hr />', unsafe_allow_html=True)
 
 ##### Bitcoin NFTs - Title
@@ -261,42 +260,3 @@ with col2:
         title=dict(font=dict(size=16))
     )
     st.plotly_chart(chart_nfts_sold, use_container_width=True)
-
-components.html('''
-<style>
-mash-donate-button::part(button-solid){
-    margin-left: 260px;
-    margin-top: 260px;
-}
-</style>
-  <script>
-    window.MashSettings = {
-      id: "dd9f18f3-6539-4967-97bc-de1b6bac7b7c"
-    };
-    var loader = function () {
-      window.Mash.init();
-    };
-    var script = document.createElement("script");
-    script.type = "text/javascript";
-    script.defer = true;
-    script.onload = loader;
-    script.src = "https://app.mash.com/sdk/sdk.js";
-    var head = document.getElementsByTagName("head")[0];
-    head.appendChild(script);
-  </script>
-  <mash-donate-button handle="my-handle" mode="all" button-size="md" button-variant="solid">
-  </mash-donate-button>
-''', height=400, width=400)
-
-st.markdown(
-    """
-    <style>
-        iframe[width="400"] {
-            position: fixed;
-            bottom: 0px;
-            right: 20px;
-        } 
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
