@@ -6,48 +6,82 @@ from datetime import datetime, timedelta
 import plotly.express as px
 import os
 
+# Set API keys
 allium_key = os.environ.get('ALLIUM_KEY')
+amboss_key = os.environ.get('AMBOSS_KEY')
 
 page_icon = "https://assets.coingecko.com/coins/images/1/thumb/bitcoin.png"
 st.set_page_config(page_title="Bitcoin Dashboard", page_icon=page_icon, layout="wide")
 
-st.title('Bitcoin Dashboard')
-
+# Configure CSS styles
 st.markdown('''
 <style>
-/*center metric label*/
-[data-testid="stMetricLabel"] {
-    justify-content: center;
-}
+    #button-links {
+        text-decoration:none; 
+        background-color:#f7931a; 
+        color:white; 
+        padding:20px; 
+        display:block;
+        box-shadow: 2px 2px 2px #FFFFFF;
+        margin-bottom: 10px;
+    }
+    /*center metric label*/
+    [data-testid="stMetricLabel"] {
+        justify-content: center;
+    }
 
-/*center metric value*/
-[data-testid="stMetricValue"] {
-    color: #F7931A;
-}
+    /*center metric value*/
+    [data-testid="stMetricValue"] {
+        color: #F7931A;
+    }
 
-[data-testid="metric-container"] {
-    box-shadow: 2px 2px 2px #FFFFFF;
-    border: 2px solid #f7931a;
-    padding: 10px;
-}
+    [data-testid="metric-container"] {
+        box-shadow: 2px 2px 2px #FFFFFF;
+        border: 2px solid #f7931a;
+        padding: 10px;
+    }
 
-.css-z5fcl4 {
-    padding-top: 36px;
-    padding-bottom: 36px;
-}
+    .css-z5fcl4 {
+        padding-top: 36px;
+        padding-bottom: 36px;
+    }
 
-.css-1544g2n {
-    padding-top: 36px;
-}
-</style>
+    .css-1544g2n {
+        padding-top: 36px;
+    }
+</style>''', unsafe_allow_html=True)
+            
+st.title('Bitcoin Dashboard')
 
-<strong>Data Powered by: </strong>
+# Create panel for navigation
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    st.markdown('''<a href="#bitcoin-blockchain" id='button-links'>
+                    <img src= "https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/1200px-Bitcoin.svg.png" height='20px'/>
+                    Bitcoin Blockchain</a>''', unsafe_allow_html=True)
+with col2:
+    st.markdown('''<a href="#bitcoin-lightning-network" id='button-links'>
+                    <img src= "https://upload.wikimedia.org/wikipedia/commons/5/5a/Lightning_Network.svg" height='20px'/>
+                    Lightning Network</a>''', unsafe_allow_html=True)
+with col3:
+    st.markdown('''<a href="#bitcoin-nfts-aka-ordinals" id='button-links'>
+                    <img src= "https://raw.githubusercontent.com/PrimoData/bitcoin_dashboard/main/assets/img/ordinals_logo.png" height='20px'/>
+                    Bitcoin NFTs</a>''', unsafe_allow_html=True)
+with col4:
+    st.markdown('''<a href="#bitcoin-map" id='button-links'>
+                    <img src= "https://btcmap.org/images/logo.svg" height='20px'/>
+                    Bitcoin Maps</a>''', unsafe_allow_html=True)
+
+# Shoutout data sources
+st.caption('''
+Data Powered by:
 [Allium](https://www.allium.so/), 
+[Amboss Space](https://amboss.tech/docs/apiDocs/intro), 
 [Bitcoin Visuals](https://bitcoinvisuals.com/resources), 
-[Blockchain.com](https://www.blockchain.com/explorer/api), and
+[Blockchain.com](https://www.blockchain.com/explorer/api),
+[BTC Maps](https://btcmap.org/map) &
 [Coinbase](https://docs.cloud.coinbase.com/sign-in-with-coinbase/docs/api-prices).<br />
-<strong>Created by: </strong>[Primo Data](https://primodata.org/).
-  
+Created by: [Primo Data](https://primodata.org/).
 ''', unsafe_allow_html=True)
 
 # Define date range dropdown options
@@ -62,25 +96,10 @@ date_ranges = {
 
 # Create a sidebar panel for date filters
 with st.sidebar:
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.image('https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/1200px-Bitcoin.svg.png', width=70)
-    with col2:
-        st.image('https://upload.wikimedia.org/wikipedia/commons/5/5a/Lightning_Network.svg', width=70)
-    with col3:
-        st.image('assets/img/ordinals_logo.png', width=70)
     st.header("Filters")
     date_range = st.sidebar.selectbox("Date Range", options=list(date_ranges.keys()))
     end_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     start_date = end_date - timedelta(days=date_ranges[date_range])   
-
-# Define the URLs for the data sources
-btc_total_url = 'https://api.blockchain.info/stats'
-price_url = 'https://api.blockchain.info/charts/market-price?timespan=all&format=json'
-addr_url = 'https://api.blockchain.info/charts/n-unique-addresses?timespan=all&format=json'
-tx_url = 'https://api.blockchain.info/charts/n-transactions?timespan=all&format=json'
-btc_lt_url = 'https://bitcoinvisuals.com/static/data/data_daily.csv'
-btc_lt_file = 'assets/data/data_daily.csv'
 
 # Fetch data from Allium API
 def get_allium_data(query_id):
@@ -110,27 +129,57 @@ def load_data():
     # Get NFT sold data from Allium
     nfts_sold_df = get_allium_data("wCl0X5q3YsaHTd0btmGs")    
 
-    # Get historical Lightning & BTC data from BitcoinVisuals.com
-    #btc_lt_df = pd.read_csv(btc_lt_url, storage_options={'User-Agent': 'Mozilla/5.0'}, usecols=["day","nodes_total","capacity_total","price_btc","tx_count_total_sum","marketcap_btc"]).rename(columns={'day':'Date'}).query('Date != "2022-04-25"')
-    btc_lt_df = pd.read_csv(btc_lt_file, usecols=["day","nodes_total","capacity_total"]).rename(columns={'day':'Date'}).query('Date != "2022-04-25"')
-    btc_lt_df['Date'] = pd.to_datetime(btc_lt_df['Date'])
-    btc_lt_df = btc_lt_df.sort_values(by="Date", ascending=False)
+    # Get Lightning Network data from Amboss API
+    headers = {
+        'Authorization': f'Bearer {amboss_key}',
+        'Content-Type': 'application/json'
+    }
+    body = {
+        'query': '''
+                query ExampleQuery {
+                getNetworkMetrics {
+                    all_time_series {
+                    series {
+                        name
+                        series {
+                        active_nodes
+                        total_capacity
+                        date
+                        }
+                    }
+                    }
+                }
+                }
+                '''
+    }
+    response = requests.post('https://api.amboss.space/graphql', headers=headers, json=body)
+    data = response.json()['data']
+    df_start = pd.DataFrame(data['getNetworkMetrics']['all_time_series']['series'][1]['series']).query("date < '2022-05-18'")
+    df_end = pd.DataFrame(data['getNetworkMetrics']['all_time_series']['series'][0]['series'])
+    lightning_df = pd.concat([df_start, df_end]).rename(columns={"date":"Date"})
+    lightning_df['Date'] = pd.to_datetime(lightning_df['Date']).dt.tz_localize(None)
+    lightning_df = lightning_df.sort_values(by="Date", ascending=False).query('Date != "2022-04-25"')
+    lightning_df['total_capacity'] = lightning_df['total_capacity'] / 100000000
 
     # Get historical BTC address data from Blockchain.com
+    price_url = 'https://api.blockchain.info/charts/market-price?timespan=all&format=json'
     price_df = get_blockchaincom_data(price_url, "Prices")
 
     # Get historical BTC address data from Blockchain.com
+    addr_url = 'https://api.blockchain.info/charts/n-unique-addresses?timespan=all&format=json'
     addr_df = get_blockchaincom_data(addr_url, "Addresses")
 
     # Get historical BTC address data from Blockchain.com
+    tx_url = 'https://api.blockchain.info/charts/n-transactions?timespan=all&format=json'
     tx_df = get_blockchaincom_data(tx_url, "Transactions")
 
     # Get Total BTC from Blockchain.com
+    btc_total_url = 'https://api.blockchain.info/stats'
     btc_total = requests.get(btc_total_url).json()['totalbc']/100000000
 
-    return nfts_new_df, nfts_sold_df, btc_lt_df, addr_df, price_df, tx_df, btc_total
+    return nfts_new_df, nfts_sold_df, lightning_df, price_df, addr_df, tx_df, btc_total
 
-nfts_new_df, nfts_sold_df, btc_lt_df, addr_df, price_df, tx_df, btc_total = load_data()
+nfts_new_df, nfts_sold_df, lightning_df, price_df, addr_df, tx_df, btc_total = load_data()
 
 # Get Current BTC Price and % 24 hr Change from Coinbase
 response = requests.get('https://api.coinbase.com/v2/prices/BTC-USD/spot')
@@ -141,11 +190,11 @@ price_chg = ((price_now - price_24h_ago) / price_24h_ago) * 100
 
 btc_total_chg = ((btc_total - ( btc_total - (144*6.25))) / ( btc_total - (144*6.25)) ) * 100
 
-ln_capacity = btc_lt_df.iloc[1,:]['capacity_total']
-ln_capacity_chg = ((ln_capacity - btc_lt_df.iloc[2,:]['capacity_total']) / btc_lt_df.iloc[2,:]['capacity_total'] ) * 100
+ln_capacity = lightning_df.iloc[1,:]['total_capacity']
+ln_capacity_chg = ((ln_capacity - lightning_df.iloc[2,:]['total_capacity']) / lightning_df.iloc[2,:]['total_capacity'] ) * 100
 
-ln_nodes = btc_lt_df.iloc[1,:]['nodes_total']
-ln_nodes_chg = ((ln_nodes - btc_lt_df.iloc[2,:]['nodes_total']) / btc_lt_df.iloc[2,:]['nodes_total'] ) * 100
+ln_nodes = lightning_df.iloc[0,:]['active_nodes']
+ln_nodes_chg = ((ln_nodes - lightning_df.iloc[1,:]['active_nodes']) / lightning_df.iloc[1,:]['active_nodes'] ) * 100
 
 tx_today = tx_df.iloc[0,:]['Transactions']
 tx_chg = ((tx_today - tx_df.iloc[1,:]['Transactions']) / tx_df.iloc[1,:]['Transactions'] ) * 100
@@ -163,7 +212,7 @@ nfts_sold_chg = ((nfts_sold_today - nfts_sold_summed_df.iloc[2,:]['total_sales_u
 
 # Filter the data based on the user's input
 addr_df = addr_df.loc[(addr_df['Date'] >= pd.Timestamp(start_date)) & (addr_df['Date'] <= pd.Timestamp(end_date))]
-btc_lt_df = btc_lt_df.loc[(btc_lt_df['Date'] >= pd.Timestamp(start_date)) & (btc_lt_df['Date'] <= pd.Timestamp(end_date))]
+lightning_df = lightning_df.loc[(lightning_df['Date'] >= pd.Timestamp(start_date)) & (lightning_df['Date'] <= pd.Timestamp(end_date))]
 nfts_sold_df = nfts_sold_df.loc[(nfts_sold_df['Date'] >= pd.Timestamp(start_date)) & (nfts_sold_df['Date'] <= pd.Timestamp(end_date))]
 nfts_new_df = nfts_new_df.loc[(nfts_new_df['Date'] >= pd.Timestamp(start_date)) & (nfts_new_df['Date'] <= pd.Timestamp(end_date))]
 
@@ -182,15 +231,14 @@ with col4:
     st.metric(label='Total Lightning Nodes', value=f"{ln_nodes:,.0f}", delta=f"{ln_nodes_chg:,.2f}%")
     st.metric(label='Bitcoin NFTs Sold (24h)', value=f"${nfts_sold_today:,.0f}", delta=f"{nfts_sold_chg:,.2f}%")
 
-# Create a line chart ofst.columns(1)
-with st.container():    
-    chart_price = px.line(price_df, x='Date', y='Prices', title='Daily Bitcoin Price ($USD)', color_discrete_sequence=['#F7931A'])
-    chart_price.update_layout(yaxis_title='Price ($USD)')
-    st.plotly_chart(chart_price, use_container_width=True)
+# Bitcoin Pricing
+chart_price = px.line(price_df, x='Date', y='Prices', title='Daily Bitcoin Price ($USD)', color_discrete_sequence=['#F7931A'])
+chart_price.update_layout(yaxis_title='Price ($USD)')
+st.plotly_chart(chart_price, use_container_width=True)
 
 st.markdown('<hr />', unsafe_allow_html=True)
 
-##### Bitcoin Blockchain - Title
+# Bitcoin Blockchain - Title
 col1, col2 = st.columns([1, 11])
 with col1:
     st.image('https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/1200px-Bitcoin.svg.png', width=70)
@@ -211,7 +259,7 @@ with col2:
 
 st.markdown('<hr />', unsafe_allow_html=True)
 
-##### Bitcoin Lightning Network - Title
+# Bitcoin Lightning Network - Title
 col1, col2 = st.columns([1, 11])
 with col1:
     st.image('https://upload.wikimedia.org/wikipedia/commons/5/5a/Lightning_Network.svg', width=70)
@@ -221,7 +269,7 @@ with col2:
 col1, col2 = st.columns(2)
 with col1:
     # Create a line chart of daily capacity
-    chart_lightning_capacity = px.line(btc_lt_df, x='Date', y='capacity_total', title='Daily Lightning Capacity', color_discrete_sequence=['#F7931A'])
+    chart_lightning_capacity = px.line(lightning_df, x='Date', y='total_capacity', title='Daily Lightning Capacity', color_discrete_sequence=['#F7931A'])
     chart_lightning_capacity.update_layout(
         yaxis_title='Capacity (BTC)',
         font=dict(size=12),
@@ -230,7 +278,7 @@ with col1:
     st.plotly_chart(chart_lightning_capacity, use_container_width=True)    
 with col2:
     # Create a line chart of daily nodes
-    chart_lightning_nodes = px.line(btc_lt_df, x='Date', y='nodes_total', title='Daily Lightning Node Count', color_discrete_sequence=['#F7931A'])
+    chart_lightning_nodes = px.line(lightning_df, x='Date', y='active_nodes', title='Daily Lightning Node Count', color_discrete_sequence=['#F7931A'])
     chart_lightning_nodes.update_layout(
         yaxis_title='Nodes',
         font=dict(size=12),
@@ -240,7 +288,7 @@ with col2:
 
 st.markdown('<hr />', unsafe_allow_html=True)
 
-##### Bitcoin NFTs - Title
+# Bitcoin NFTs - Title
 col1, col2 = st.columns([1, 11])
 with col1:
     st.image('assets/img/ordinals_logo.png', width=70)
@@ -258,3 +306,27 @@ with col2:
     chart_nfts_sold = px.bar(nfts_sold_df, x='Date', y='total_sales_usd', color='marketplace', barmode='stack', title='Daily NFTs Sales ($USD)')
     chart_nfts_sold.update_layout(yaxis_title='Sales ($USD)')
     st.plotly_chart(chart_nfts_sold, use_container_width=True)
+
+st.markdown('<hr />', unsafe_allow_html=True)
+
+
+# Bitcoin Maps - Title
+col1, col2 = st.columns([1, 11])
+with col1:
+    st.image('https://btcmap.org/images/logo.svg', width=70)
+with col2:
+    st.header("Bitcoin Maps")
+
+st.markdown("""
+<iframe
+	id="btcmap"
+	title="BTC Map"
+	width="100%"
+	height="500"
+	allowfullscreen="true"
+	allow="geolocation"
+	src="https://btcmap.org/map"
+>
+</iframe>
+""", unsafe_allow_html=True)
+
